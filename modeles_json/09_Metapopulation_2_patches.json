@@ -1,0 +1,300 @@
+{
+  "meta": {
+    "model_name": "Metapopulation_2_patches",
+    "app_version": "2.0.0",
+    "description": "SIR metapopulation avec 2 patches connectes par mobilite. Patch 1 = zone urbaine, Patch 2 = zone rurale. Matrice NGM 2x2 (I1, I2). R0 = rayon spectral de K avec K_ij = beta_i * m_ij * S_i* / (gamma_i * N_i). Test couplage spatial et mobilite."
+  },
+  "compartments": [
+    {
+      "state_id": "S1",
+      "label": "Susceptibles patch 1 (urbain)",
+      "state_type": "susceptible",
+      "state_comment": "Susceptibles zone urbaine",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "1",
+      "description": "Population susceptible zone urbaine",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I1",
+      "label": "Infectieux patch 1 (urbain)",
+      "state_type": "infectious",
+      "state_comment": "Infectieux zone urbaine",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "1",
+      "description": "Population infectieuse zone urbaine",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R1",
+      "label": "Gueris patch 1 (urbain)",
+      "state_type": "recovered",
+      "state_comment": "Gueris zone urbaine",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "1",
+      "description": "Population guerie zone urbaine",
+      "verification": "ok"
+    },
+    {
+      "state_id": "S2",
+      "label": "Susceptibles patch 2 (rural)",
+      "state_type": "susceptible",
+      "state_comment": "Susceptibles zone rurale",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "2",
+      "description": "Population susceptible zone rurale",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I2",
+      "label": "Infectieux patch 2 (rural)",
+      "state_type": "infectious",
+      "state_comment": "Infectieux zone rurale",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "2",
+      "description": "Population infectieuse zone rurale",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R2",
+      "label": "Gueris patch 2 (rural)",
+      "state_type": "recovered",
+      "state_comment": "Gueris zone rurale",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "2",
+      "description": "Population guerie zone rurale",
+      "verification": "ok"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S1",
+      "to_state_id": "I1",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_1",
+      "rate_expression": "S1 * (beta_1 * I1 / N1 + beta_12 * I2 / N2)",
+      "description": "Transmission dans patch 1 depuis I1 et I2 (mobilite)",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "beta_1: transmission locale; beta_12: transmission croisee via mobilite",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "I1",
+      "to_state_id": "R1",
+      "process_type": "recovery",
+      "transmission_type": "",
+      "density_type": "",
+      "rate_name": "gamma_1",
+      "rate_expression": "gamma_1 * I1",
+      "description": "Guerison patch 1",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison zone urbaine",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "S2",
+      "to_state_id": "I2",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_2",
+      "rate_expression": "S2 * (beta_2 * I2 / N2 + beta_21 * I1 / N1)",
+      "description": "Transmission dans patch 2 depuis I2 et I1 (mobilite)",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "beta_2: transmission locale; beta_21: transmission croisee",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F4",
+      "from_state_id": "I2",
+      "to_state_id": "R2",
+      "process_type": "recovery",
+      "transmission_type": "",
+      "density_type": "",
+      "rate_name": "gamma_2",
+      "rate_expression": "gamma_2 * I2",
+      "description": "Guerison patch 2",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison zone rurale",
+      "rate_param_desc": ""
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S1",
+      "label": "Susceptibles patch 1",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "N1",
+      "dfe_auto": true,
+      "dfe_comment": "S1* = N1"
+    },
+    {
+      "state_id": "I1",
+      "label": "Infectieux patch 1",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Nul au DFE"
+    },
+    {
+      "state_id": "R1",
+      "label": "Gueris patch 1",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Nul au DFE"
+    },
+    {
+      "state_id": "S2",
+      "label": "Susceptibles patch 2",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "N2",
+      "dfe_auto": true,
+      "dfe_comment": "S2* = N2"
+    },
+    {
+      "state_id": "I2",
+      "label": "Infectieux patch 2",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Nul au DFE"
+    },
+    {
+      "state_id": "R2",
+      "label": "Gueris patch 2",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Nul au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "beta_1",
+      "description": "Taux transmission local patch 1 (urbain)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "beta_2",
+      "description": "Taux transmission local patch 2 (rural)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "beta_12",
+      "description": "Taux transmission croise patch1 <- infectieux patch2",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "beta_21",
+      "description": "Taux transmission croise patch2 <- infectieux patch1",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "gamma_1",
+      "description": "Taux de guerison patch 1 (urbain)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "gamma_2",
+      "description": "Taux de guerison patch 2 (rural)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "N1",
+      "description": "Taille population patch 1 (urbain)",
+      "units": "individus",
+      "category": "both",
+      "in_flux": true,
+      "in_dfe": true
+    },
+    {
+      "param_name": "N2",
+      "description": "Taille population patch 2 (rural)",
+      "units": "individus",
+      "category": "both",
+      "in_flux": true,
+      "in_dfe": true
+    }
+  ],
+  "species_list": [
+    "human"
+  ]
+}

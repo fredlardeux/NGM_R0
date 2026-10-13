@@ -1,0 +1,16 @@
+# NGM R0 Calculator -- Backend FastAPI
+# Installer avec : pip install -r requirements.txt
+
+# Serveur web
+fastapi>=0.100.0
+uvicorn[standard]>=0.20.0
+
+# Validation des donnees
+pydantic>=2.0.0
+
+# Calcul symbolique
+sympy>=1.12
+
+# Calcul numerique / sensibilite
+scipy>=1.10.0
+numpy>=1.24.0

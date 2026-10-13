@@ -1,0 +1,89 @@
+{
+  "meta": {
+    "model_name": "SIR Simple - Safe Names",
+    "saved_at": "2026-03-20T14:00:00",
+    "app_version": "2.0",
+    "description": "Modèle SIR avec noms SymPy-safe. R₀ = beta/gamma"
+  },
+  "species_list": ["human"],
+  "compartments": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptibles",
+      "state_type": "susceptible",
+      "species": "human",
+      "description": "Individus susceptibles"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Infectieux",
+      "state_type": "infectious",
+      "species": "human",
+      "description": "Individus infectieux"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Guéris",
+      "state_type": "recovered",
+      "species": "human",
+      "description": "Individus guéris et immunisés"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h",
+      "to_state_id": "I_h",
+      "process_type": "transmission",
+      "rate_expression": "beta*S_h*I_h/Ntot",
+      "description": "Transmission fréquence-dépendante",
+      "rate_param_desc": "beta=Taux de transmission||Ntot=Population totale"
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "I_h",
+      "to_state_id": "R_h",
+      "process_type": "recovery",
+      "rate_expression": "gamma*I_h",
+      "description": "Guérison des infectieux",
+      "rate_param_desc": "gamma=Taux de guérison"
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S_h",
+      "dfe_expr": "Ntot",
+      "dfe_comment": "Toute la population susceptible au DFE"
+    },
+    {
+      "state_id": "I_h",
+      "dfe_expr": "0",
+      "dfe_comment": "Aucun infectieux au DFE"
+    },
+    {
+      "state_id": "R_h",
+      "dfe_expr": "0",
+      "dfe_comment": "Aucun guéri au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "beta",
+      "description": "Taux de transmission",
+      "units": "1/jour",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "gamma",
+      "description": "Taux de guérison",
+      "units": "1/jour",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "Ntot",
+      "description": "Population totale",
+      "units": "individus",
+      "category": "both"
+    }
+  ]
+}

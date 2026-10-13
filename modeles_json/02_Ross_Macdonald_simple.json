@@ -1,0 +1,164 @@
+{
+  "meta": {
+    "model_name": "Ross-Macdonald Simple",
+    "saved_at": "2026-04-27T12:00:00",
+    "app_version": "2.0",
+    "description": "Modèle Ross-Macdonald simple (transmission vectorielle). R₀ = sqrt(a^2 * b * c * m / (mu_v * gamma_h))"
+  },
+  "species_list": ["human", "mosquito"],
+  "compartments": [
+    {
+      "state_id": "S_h",
+      "label": "Humains Susceptibles",
+      "state_type": "susceptible",
+      "species": "human",
+      "description": "Humains susceptibles au paludisme"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Humains Infectieux",
+      "state_type": "infectious",
+      "species": "human",
+      "description": "Humains infectieux (porteurs de gamétocytes)"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Humains Guéris",
+      "state_type": "recovered",
+      "species": "human",
+      "description": "Humains guéris et temporairement immunisés"
+    },
+    {
+      "state_id": "S_v",
+      "label": "Moustiques Susceptibles",
+      "state_type": "susceptible",
+      "species": "mosquito",
+      "description": "Moustiques susceptibles (non infectés)"
+    },
+    {
+      "state_id": "I_v",
+      "label": "Moustiques Infectieux",
+      "state_type": "infectious",
+      "species": "mosquito",
+      "description": "Moustiques infectieux (porteurs de sporozoïtes)"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h",
+      "to_state_id": "I_h",
+      "process_type": "transmission",
+      "rate_expression": "a*b*I_v*S_h/N_h",
+      "description": "Infection des humains par piqûre de moustique infectieux",
+      "rate_param_desc": "a=Taux de piqûre (piqûres/moustique/jour)||b=Probabilité transmission moustique->humain||N_h=Population humaine totale"
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "I_h",
+      "to_state_id": "R_h",
+      "process_type": "recovery",
+      "rate_expression": "gamma_h*I_h",
+      "description": "Guérison des humains infectieux",
+      "rate_param_desc": "gamma_h=Taux de guérison humain"
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "S_v",
+      "to_state_id": "I_v",
+      "process_type": "transmission",
+      "rate_expression": "a*c*I_h*S_v/N_h",
+      "description": "Infection des moustiques par piqûre sur humain infectieux",
+      "rate_param_desc": "a=Taux de piqûre (piqûres/moustique/jour)||c=Probabilité transmission humain->moustique"
+    },
+    {
+      "flux_id": "F4",
+      "from_state_id": "I_v",
+      "to_state_id": null,
+      "process_type": "death",
+      "rate_expression": "mu_v*I_v",
+      "description": "Mort des moustiques infectieux",
+      "rate_param_desc": "mu_v=Taux de mortalité des moustiques"
+    },
+    {
+      "flux_id": "F5",
+      "from_state_id": "S_v",
+      "to_state_id": null,
+      "process_type": "death",
+      "rate_expression": "mu_v*S_v",
+      "description": "Mort des moustiques susceptibles",
+      "rate_param_desc": "mu_v=Taux de mortalité des moustiques"
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S_h",
+      "dfe_expr": "N_h",
+      "dfe_comment": "Toute la population humaine susceptible au DFE"
+    },
+    {
+      "state_id": "I_h",
+      "dfe_expr": "0",
+      "dfe_comment": "Aucun humain infectieux au DFE"
+    },
+    {
+      "state_id": "R_h",
+      "dfe_expr": "0",
+      "dfe_comment": "Aucun humain guéri au DFE"
+    },
+    {
+      "state_id": "S_v",
+      "dfe_expr": "m*N_h",
+      "dfe_comment": "Population vectorielle totale au DFE (m = ratio moustiques/humains)"
+    },
+    {
+      "state_id": "I_v",
+      "dfe_expr": "0",
+      "dfe_comment": "Aucun moustique infectieux au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "a",
+      "description": "Taux de piqûre par moustique",
+      "units": "piqûres/moustique/jour",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "b",
+      "description": "Probabilité de transmission moustique vers humain par piqûre",
+      "units": "sans unité",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "c",
+      "description": "Probabilité de transmission humain vers moustique par piqûre",
+      "units": "sans unité",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "gamma_h",
+      "description": "Taux de guérison des humains",
+      "units": "1/jour",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "mu_v",
+      "description": "Taux de mortalité des moustiques",
+      "units": "1/jour",
+      "category": "flux_only"
+    },
+    {
+      "param_name": "m",
+      "description": "Ratio moustiques/humains (densité vectorielle)",
+      "units": "moustiques/humain",
+      "category": "both"
+    },
+    {
+      "param_name": "N_h",
+      "description": "Population humaine totale",
+      "units": "individus",
+      "category": "both"
+    }
+  ]
+}

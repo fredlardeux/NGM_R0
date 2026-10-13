@@ -1,0 +1,201 @@
+{
+  "meta": {
+    "model_name": "SEIR_classique",
+    "app_version": "2.0.0",
+    "description": "SEIR classique avec periode de latence. R0 = beta_c / gamma_r."
+  },
+  "compartments": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "state_comment": "Individus susceptibles",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "",
+      "description": "Population susceptible",
+      "verification": "ok"
+    },
+    {
+      "state_id": "E_h",
+      "label": "Exposed",
+      "state_type": "exposed",
+      "state_comment": "Individus exposes non infectieux",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "",
+      "description": "Periode de latence",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Infectious",
+      "state_type": "infectious",
+      "state_comment": "Individus infectieux",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "",
+      "description": "Population infectieuse",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Recovered",
+      "state_type": "recovered",
+      "state_comment": "Individus gueris immunises",
+      "species": "human",
+      "strain": "",
+      "age_class": "",
+      "patch": "",
+      "description": "Population remise",
+      "verification": "ok"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h",
+      "to_state_id": "E_h",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_c",
+      "rate_expression": "beta_c * S_h * I_h / Ntot",
+      "description": "Transmission vers exposes",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de transmission frequence-dependant",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "E_h",
+      "to_state_id": "I_h",
+      "process_type": "progression",
+      "transmission_type": "",
+      "density_type": "",
+      "rate_name": "sigma_e",
+      "rate_expression": "sigma_e * E_h",
+      "description": "Progression vers infectieux",
+      "is_demographic": false,
+      "is_progression": true,
+      "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de progression hors latence",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "I_h",
+      "to_state_id": "R_h",
+      "process_type": "recovery",
+      "transmission_type": "",
+      "density_type": "",
+      "rate_name": "gamma_r",
+      "rate_expression": "gamma_r * I_h",
+      "description": "Guerison",
+      "is_demographic": false,
+      "is_progression": false,
+      "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "",
+      "rate_template_label": "",
+      "rate_expression_auto": "",
+      "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison",
+      "rate_param_desc": ""
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "Ntot",
+      "dfe_auto": true,
+      "dfe_comment": "Susceptibles = taille population au DFE"
+    },
+    {
+      "state_id": "E_h",
+      "label": "Exposed",
+      "state_type": "exposed",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Exposes nuls au DFE"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Infectious",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Infectieux nuls au DFE"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Recovered",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Remis nuls au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "beta_c",
+      "description": "Taux de transmission",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "sigma_e",
+      "description": "Taux de progression hors latence (1/periode_incubation)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "gamma_r",
+      "description": "Taux de guerison",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true,
+      "in_dfe": false
+    },
+    {
+      "param_name": "Ntot",
+      "description": "Taille totale de la population",
+      "units": "individus",
+      "category": "both",
+      "in_flux": true,
+      "in_dfe": true
+    }
+  ],
+  "species_list": ["human"]
+}

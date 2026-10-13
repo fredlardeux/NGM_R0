@@ -1,0 +1,256 @@
+{
+  "meta": {
+    "model_name": "SIRS_deux_souches",
+    "app_version": "2.0.0",
+    "description": "SIRS avec deux souches en co-circulation. Matrice NGM 2x2 par blocs. Test immunite croisee et matrice K non-triviale. R0 = max(beta_1/gamma_r, beta_2/gamma_r)."
+  },
+  "compartments": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "state_comment": "Susceptibles aux deux souches",
+      "species": "human",
+      "strain": "", "age_class": "", "patch": "",
+      "description": "Population susceptible aux deux souches",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I1_h",
+      "label": "Infectious souche 1",
+      "state_type": "infectious",
+      "state_comment": "Infectieux souche 1",
+      "species": "human",
+      "strain": "1", "age_class": "", "patch": "",
+      "description": "Infectieux par la souche 1",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I2_h",
+      "label": "Infectious souche 2",
+      "state_type": "infectious",
+      "state_comment": "Infectieux souche 2",
+      "species": "human",
+      "strain": "2", "age_class": "", "patch": "",
+      "description": "Infectieux par la souche 2",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R1_h",
+      "label": "Recovered souche 1",
+      "state_type": "recovered",
+      "state_comment": "Immunises souche 1",
+      "species": "human",
+      "strain": "1", "age_class": "", "patch": "",
+      "description": "Gueris de la souche 1 avec immunite",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R2_h",
+      "label": "Recovered souche 2",
+      "state_type": "recovered",
+      "state_comment": "Immunises souche 2",
+      "species": "human",
+      "strain": "2", "age_class": "", "patch": "",
+      "description": "Gueris de la souche 2 avec immunite",
+      "verification": "ok"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h",
+      "to_state_id": "I1_h",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_1",
+      "rate_expression": "beta_1 * S_h * I1_h / Ntot",
+      "description": "Transmission souche 1",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de transmission souche 1",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "S_h",
+      "to_state_id": "I2_h",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_2",
+      "rate_expression": "beta_2 * S_h * I2_h / Ntot",
+      "description": "Transmission souche 2",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de transmission souche 2",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "I1_h",
+      "to_state_id": "R1_h",
+      "process_type": "recovery",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_r",
+      "rate_expression": "gamma_r * I1_h",
+      "description": "Guerison souche 1",
+      "is_demographic": false, "is_progression": false, "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison (identique pour les deux souches)",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F4",
+      "from_state_id": "I2_h",
+      "to_state_id": "R2_h",
+      "process_type": "recovery",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_r",
+      "rate_expression": "gamma_r * I2_h",
+      "description": "Guerison souche 2",
+      "is_demographic": false, "is_progression": false, "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F5",
+      "from_state_id": "R1_h",
+      "to_state_id": "S_h",
+      "process_type": "waning_immunity",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "omega_w",
+      "rate_expression": "omega_w * R1_h",
+      "description": "Perte immunite souche 1",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Perte d'immunite vers susceptibles",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F6",
+      "from_state_id": "R2_h",
+      "to_state_id": "S_h",
+      "process_type": "waning_immunity",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "omega_w",
+      "rate_expression": "omega_w * R2_h",
+      "description": "Perte immunite souche 2",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Perte d'immunite vers susceptibles",
+      "rate_param_desc": ""
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "Ntot",
+      "dfe_auto": true,
+      "dfe_comment": "S* = Ntot au DFE"
+    },
+    {
+      "state_id": "I1_h",
+      "label": "Infectious souche 1",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Infectieux nuls au DFE"
+    },
+    {
+      "state_id": "I2_h",
+      "label": "Infectious souche 2",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Infectieux nuls au DFE"
+    },
+    {
+      "state_id": "R1_h",
+      "label": "Recovered souche 1",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Remis nuls au DFE"
+    },
+    {
+      "state_id": "R2_h",
+      "label": "Recovered souche 2",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Remis nuls au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "beta_1",
+      "description": "Taux de transmission souche 1",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "beta_2",
+      "description": "Taux de transmission souche 2",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "gamma_r",
+      "description": "Taux de guerison (identique pour les deux souches)",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "omega_w",
+      "description": "Taux de perte d'immunite",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "Ntot",
+      "description": "Taille totale de la population",
+      "units": "individus",
+      "category": "both",
+      "in_flux": true, "in_dfe": true
+    }
+  ],
+  "species_list": ["human"]
+}

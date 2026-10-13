@@ -1,0 +1,208 @@
+{
+  "meta": {
+    "model_name": "SVIR_vaccination",
+    "app_version": "2.0.0",
+    "description": "SVIR avec vaccination. Les vaccines ont une protection partielle (1-epsilon). R0 = beta_c * (S* + (1-epsilon)*V*) / (gamma_r * Ntot). Test impact de la vaccination sur R0."
+  },
+  "compartments": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "state_comment": "Non vaccines susceptibles",
+      "species": "human",
+      "strain": "", "age_class": "", "patch": "",
+      "description": "Population susceptible non vaccinee",
+      "verification": "ok"
+    },
+    {
+      "state_id": "V_h",
+      "label": "Vaccinated",
+      "state_type": "susceptible",
+      "state_comment": "Vaccines avec protection partielle",
+      "species": "human",
+      "strain": "", "age_class": "", "patch": "",
+      "description": "Population vaccinee - protection partielle epsilon",
+      "verification": "ok"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Infectious",
+      "state_type": "infectious",
+      "state_comment": "Individus infectieux",
+      "species": "human",
+      "strain": "", "age_class": "", "patch": "",
+      "description": "Population infectieuse",
+      "verification": "ok"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Recovered",
+      "state_type": "recovered",
+      "state_comment": "Individus gueris immunises",
+      "species": "human",
+      "strain": "", "age_class": "", "patch": "",
+      "description": "Population remise",
+      "verification": "ok"
+    }
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h",
+      "to_state_id": "V_h",
+      "process_type": "vaccination",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "nu_v",
+      "rate_expression": "nu_v * S_h",
+      "description": "Vaccination des susceptibles",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de vaccination",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "S_h",
+      "to_state_id": "I_h",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_c",
+      "rate_expression": "beta_c * S_h * I_h / Ntot",
+      "description": "Transmission vers non vaccines",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Transmission pleine chez les non vaccines",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "V_h",
+      "to_state_id": "I_h",
+      "process_type": "transmission",
+      "transmission_type": "direct",
+      "density_type": "frequency",
+      "rate_name": "beta_c",
+      "rate_expression": "beta_c * (1 - epsilon) * V_h * I_h / Ntot",
+      "description": "Transmission vers vaccines (protection partielle)",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "epsilon = efficacite vaccinale (0=aucune, 1=parfaite)",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F4",
+      "from_state_id": "I_h",
+      "to_state_id": "R_h",
+      "process_type": "recovery",
+      "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_r",
+      "rate_expression": "gamma_r * I_h",
+      "description": "Guerison",
+      "is_demographic": false, "is_progression": false, "is_recovery": true,
+      "verification": "ok",
+      "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual",
+      "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison",
+      "rate_param_desc": ""
+    }
+  ],
+  "dfe": [
+    {
+      "state_id": "S_h",
+      "label": "Susceptible",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "Ntot * (1 - p_v)",
+      "dfe_auto": false,
+      "dfe_comment": "S* = Ntot * (1 - proportion_vaccinee)"
+    },
+    {
+      "state_id": "V_h",
+      "label": "Vaccinated",
+      "state_type": "susceptible",
+      "species": "human",
+      "dfe_expr": "Ntot * p_v",
+      "dfe_auto": false,
+      "dfe_comment": "V* = Ntot * proportion_vaccinee"
+    },
+    {
+      "state_id": "I_h",
+      "label": "Infectious",
+      "state_type": "infectious",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Infectieux nuls au DFE"
+    },
+    {
+      "state_id": "R_h",
+      "label": "Recovered",
+      "state_type": "recovered",
+      "species": "human",
+      "dfe_expr": "0",
+      "dfe_auto": true,
+      "dfe_comment": "Remis nuls au DFE"
+    }
+  ],
+  "params": [
+    {
+      "param_name": "beta_c",
+      "description": "Taux de transmission de contact",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "gamma_r",
+      "description": "Taux de guerison",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "nu_v",
+      "description": "Taux de vaccination",
+      "units": "1/jour",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "epsilon",
+      "description": "Efficacite vaccinale (0=nulle, 1=parfaite)",
+      "units": "sans unite",
+      "category": "flux_only",
+      "in_flux": true, "in_dfe": false
+    },
+    {
+      "param_name": "p_v",
+      "description": "Proportion de la population vaccinee au DFE",
+      "units": "sans unite",
+      "category": "dfe_only",
+      "in_flux": false, "in_dfe": true
+    },
+    {
+      "param_name": "Ntot",
+      "description": "Taille totale de la population",
+      "units": "individus",
+      "category": "both",
+      "in_flux": true, "in_dfe": true
+    }
+  ],
+  "species_list": ["human"]
+}

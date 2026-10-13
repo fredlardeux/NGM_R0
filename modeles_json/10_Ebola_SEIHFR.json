@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "model_name": "Ebola_SEIHFR",
+    "app_version": "2.0.0",
+    "description": "Modele Ebola (Legrand et al. 2007). Compartiments: S, E, I (communaute), H (hopital), F (funerailles), R (gueri). Matrice NGM 3x3 (I, H, F). Transmission via 3 voies: communaute, hopital, rituels funeraires. R0 = R0_I + R0_H + R0_F."
+  },
+  "compartments": [
+    {"state_id": "S_h", "label": "Susceptible",          "state_type": "susceptible", "state_comment": "Non infectes",                  "species": "human", "strain": "", "age_class": "", "patch": "", "description": "Population susceptible",                              "verification": "ok"},
+    {"state_id": "E_h", "label": "Expose",               "state_type": "exposed",     "state_comment": "Incubation 2-21 jours",          "species": "human", "strain": "", "age_class": "", "patch": "", "description": "Periode incubation Ebola",                          "verification": "ok"},
+    {"state_id": "I_h", "label": "Infectieux communaute","state_type": "infectious",  "state_comment": "Cas communautaires",             "species": "human", "strain": "", "age_class": "", "patch": "", "description": "Cas infectieux en communaute avant hospitalisation",    "verification": "ok"},
+    {"state_id": "H_h", "label": "Hospitalise",          "state_type": "infectious",  "state_comment": "Cas en hopital/centre traitement","species": "human", "strain": "", "age_class": "", "patch": "", "description": "Cas hospitalises - transmission reduite",               "verification": "ok"},
+    {"state_id": "F_h", "label": "Funerailles",          "state_type": "infectious",  "state_comment": "Corps non securise",             "species": "human", "strain": "", "age_class": "", "patch": "", "description": "Corps infectieux lors rituels funeraires",             "verification": "ok"},
+    {"state_id": "R_h", "label": "Gueri",                "state_type": "recovered",   "state_comment": "Survivants immunises",           "species": "human", "strain": "", "age_class": "", "patch": "", "description": "Gueris avec immunite durable",                      "verification": "ok"}
+  ],
+  "fluxes": [
+    {
+      "flux_id": "F1",
+      "from_state_id": "S_h", "to_state_id": "E_h",
+      "process_type": "transmission", "transmission_type": "direct", "density_type": "frequency",
+      "rate_name": "beta_I",
+      "rate_expression": "S_h * (beta_I * I_h + beta_H * H_h + beta_F * F_h) / Ntot",
+      "description": "Transmission depuis I, H et F",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "3 voies: communaute beta_I, hopital beta_H, funerailles beta_F",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F2",
+      "from_state_id": "E_h", "to_state_id": "I_h",
+      "process_type": "progression", "transmission_type": "", "density_type": "",
+      "rate_name": "sigma_e",
+      "rate_expression": "sigma_e * E_h",
+      "description": "Fin incubation -> cas communautaire",
+      "is_demographic": false, "is_progression": true, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "1/duree_incubation (moy 6-12 jours)",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F3",
+      "from_state_id": "I_h", "to_state_id": "H_h",
+      "process_type": "progression", "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_1",
+      "rate_expression": "gamma_1 * I_h",
+      "description": "Hospitalisation des cas communautaires",
+      "is_demographic": false, "is_progression": true, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de transfert vers centre traitement",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F4",
+      "from_state_id": "I_h", "to_state_id": "F_h",
+      "process_type": "death", "transmission_type": "", "density_type": "",
+      "rate_name": "delta_1",
+      "rate_expression": "delta_1 * I_h",
+      "description": "Deces en communaute -> corps funerailles",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "CFR Ebola en communaute ~70-90%",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F5",
+      "from_state_id": "H_h", "to_state_id": "F_h",
+      "process_type": "death", "transmission_type": "", "density_type": "",
+      "rate_name": "delta_2",
+      "rate_expression": "delta_2 * H_h",
+      "description": "Deces a l'hopital -> corps funerailles",
+      "is_demographic": false, "is_progression": false, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "CFR Ebola a l'hopital ~50-70%",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F6",
+      "from_state_id": "H_h", "to_state_id": "R_h",
+      "process_type": "recovery", "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_2",
+      "rate_expression": "gamma_2 * H_h",
+      "description": "Guerison a l'hopital",
+      "is_demographic": false, "is_progression": false, "is_recovery": true,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "Taux de guerison avec soins de support",
+      "rate_param_desc": ""
+    },
+    {
+      "flux_id": "F7",
+      "from_state_id": "F_h", "to_state_id": "R_h",
+      "process_type": "progression", "transmission_type": "", "density_type": "",
+      "rate_name": "gamma_F",
+      "rate_expression": "gamma_F * F_h",
+      "description": "Corps securise apres funerailles",
+      "is_demographic": false, "is_progression": true, "is_recovery": false,
+      "verification": "ok", "rate_template_id": "", "rate_template_label": "",
+      "rate_expression_auto": "", "rate_source": "manual", "rate_validated": true,
+      "rate_units": "1/jour",
+      "rate_comment": "1/duree_rituel_funeraire - corps devient non infectieux",
+      "rate_param_desc": ""
+    }
+  ],
+  "dfe": [
+    {"state_id": "S_h", "label": "Susceptible",    "state_type": "susceptible", "species": "human", "dfe_expr": "Ntot", "dfe_auto": true, "dfe_comment": "S* = Ntot"},
+    {"state_id": "E_h", "label": "Expose",         "state_type": "exposed",     "species": "human", "dfe_expr": "0",    "dfe_auto": true, "dfe_comment": "Nul au DFE"},
+    {"state_id": "I_h", "label": "Infectieux",     "state_type": "infectious",  "species": "human", "dfe_expr": "0",    "dfe_auto": true, "dfe_comment": "Nul au DFE"},
+    {"state_id": "H_h", "label": "Hospitalise",    "state_type": "infectious",  "species": "human", "dfe_expr": "0",    "dfe_auto": true, "dfe_comment": "Nul au DFE"},
+    {"state_id": "F_h", "label": "Funerailles",    "state_type": "infectious",  "species": "human", "dfe_expr": "0",    "dfe_auto": true, "dfe_comment": "Nul au DFE"},
+    {"state_id": "R_h", "label": "Gueri",          "state_type": "recovered",   "species": "human", "dfe_expr": "0",    "dfe_auto": true, "dfe_comment": "Nul au DFE"}
+  ],
+  "params": [
+    {"param_name": "beta_I",  "description": "Taux transmission en communaute",         "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "beta_H",  "description": "Taux transmission en hopital (reduit)",   "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "beta_F",  "description": "Taux transmission lors funerailles",      "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "sigma_e", "description": "Taux progression hors incubation",        "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "gamma_1", "description": "Taux hospitalisation depuis communaute",  "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "gamma_2", "description": "Taux guerison a l'hopital",               "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "gamma_F", "description": "Taux securisation corps funeraires",      "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "delta_1", "description": "Taux mortalite en communaute",            "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "delta_2", "description": "Taux mortalite a l'hopital",              "units": "1/jour", "category": "flux_only", "in_flux": true, "in_dfe": false},
+    {"param_name": "Ntot",    "description": "Taille totale de la population",          "units": "individus", "category": "both", "in_flux": true, "in_dfe": true}
+  ],
+  "species_list": ["human"]
+}
