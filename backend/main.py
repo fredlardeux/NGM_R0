@@ -142,17 +142,26 @@ class HarteminkR0Request(BaseModel):
 
 @app.on_event("startup")
 async def warmup():
-    """Pre-charger sympy au demarrage pour eviter la lenteur du premier appel."""
+    """
+    Pre-charger sympy en arriere-plan pour eviter la lenteur du premier appel.
+    Utilise run_in_executor pour ne pas bloquer la boucle asyncio
+    et permettre a CTRL+C de fonctionner correctement.
+    """
+    import asyncio
     import sys
-    try:
-        # Forcer le chargement de tous les modules lourds
-        import sympy, scipy, numpy
-        # Faire un calcul minimal pour initialiser le JIT de sympy
-        x = sympy.Symbol('x')
-        _ = sympy.simplify(x**2 / x)
-        print("[FastAPI] Warmup sympy OK", file=sys.stderr)
-    except Exception as e:
-        print(f"[FastAPI] Warmup warning: {e}", file=sys.stderr)
+
+    def _do_warmup():
+        try:
+            import sympy
+            x = sympy.Symbol('x')
+            _ = sympy.simplify(x**2 / x)
+            print("[FastAPI] Warmup sympy OK", file=sys.stderr)
+        except Exception as e:
+            print(f"[FastAPI] Warmup warning: {e}", file=sys.stderr)
+
+    # Lance le warmup dans un thread separé -- CTRL+C reste fonctionnel
+    loop = asyncio.get_event_loop()
+    loop.run_in_executor(None, _do_warmup)
 
 
 @app.get("/health")

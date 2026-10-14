@@ -238,6 +238,12 @@ observeEvent(input$btn_load_model, {
 
   # Desactiver le flag de chargement -- les observers peuvent reprendre
   rv_loading(FALSE)
+
+  # Re-forcer le DFE et les params APRES rv_loading(FALSE)
+  # car l'observer M09 peut se declencher immediatement apres le flag
+  # et ecraser le DFE avec les valeurs auto du modele precedent
+  if (!is.null(result$dfe_df))    rv_dfe(result$dfe_df)
+  if (!is.null(result$params_df)) rv_params(result$params_df)
   rv_load_status(list(
     ok = TRUE, type = "success",
     message = paste0("\u2705 '", result$model_name, "' \u2014 ",

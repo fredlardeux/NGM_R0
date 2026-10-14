@@ -559,10 +559,9 @@ observeEvent(input$btn_compute_ngm, {
   ctx <- build_sympy_context(rv_comp(), rv_flux(), rv_dfe(), rv_params())
   ctx$infected_states <- rv_infected_order()
 
-  sym_df <- if (!is.null(rv_symbolic()) && nrow(rv_symbolic()) > 0)
-    rv_symbolic()
-  else
-    build_symbolic_table(rv_comp(), rv_flux())
+  # Toujours reconstruire sym_df depuis les flux COURANTS
+  # Ne pas utiliser rv_symbolic() qui peut contenir les flux d'un ancien modele
+  sym_df <- build_symbolic_table(rv_comp(), rv_flux())
   rv_sym_df_ngm(sym_df)
 
   infected_ord <- rv_infected_order()
