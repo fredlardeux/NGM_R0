@@ -1,4 +1,4 @@
-# Manuel d'utilisation — NGM R₀ Calculator v2
+# Manuel d'utilisation — NGM R₀ Calculator v2_
 
 **Version** : 2.0 (FastAPI)  
 **Statut** : Brouillon de travail — à compléter au fil du développement  
