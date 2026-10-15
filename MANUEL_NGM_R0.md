@@ -1,4 +1,4 @@
-# Manuel d'utilisation — NGM R₀ Calculator v2_
+# Manuel d'utilisation — NGM R₀ Calculator v2
 
 **Version** : 2.0 (FastAPI)  
 **Statut** : Brouillon de travail — à compléter au fil du développement  
@@ -119,15 +119,21 @@ Le calcul se déroule en 7 étapes :
 
 Il n'existe **pas de formule analytique générale** pour les valeurs propres d'une matrice polynomiale de degré ≥ 5. En pratique :
 
-| Taille de K | Méthode | Résultat |
-|---|---|---|
-| 1×1 | Symbolique | R₀ = expression exacte |
-| 2×2 | Symbolique | R₀ = expression exacte |
-| 3×3 | Symbolique | R₀ = expression exacte (si simplifiable) |
-| 4×4 | Symbolique | R₀ = expression exacte (si simplifiable) |
-| **≥ 5×5** | **Numérique** | **R₀ = rayon spectral numérique** |
+| Taille de K | R₀ symbolique | Sensibilité | Méthode |
+|---|---|---|---|
+| 1×1 | ✅ Formule exacte | ✅ Dérivée analytique | Symbolique |
+| 2×2 | ✅ Formule exacte | ✅ Dérivée analytique | Symbolique |
+| 3×3 | ✅ Formule exacte | ✅ Dérivée analytique | Symbolique |
+| 4×4 | ✅ Formule exacte | ✅ Dérivée analytique | Symbolique |
+| **≥ 5×5** | **❌ Non disponible** | **✅ Différences finies** | **Numérique** |
 
-Pour les matrices ≥ 5×5, **le programme calcule toujours R₀ numériquement** une fois les valeurs des paramètres fournies dans l'onglet "Évaluation Numérique". L'expression symbolique n'est pas disponible.
+Pour les matrices ≥ 5×5, **le programme calcule toujours R₀ numériquement** (rayon spectral) une fois les valeurs des paramètres fournies dans l'onglet "Évaluation Numérique". L'expression symbolique n'est pas disponible.
+
+L'**analyse de sensibilité reste disponible** pour tous les modèles, y compris ≥ 5×5, via la méthode des différences finies numériques :
+```
+e(R₀, θ) ≈ (R₀(θ+ε) - R₀(θ-ε)) / (2ε·R₀) × θ,   ε = 0.1%
+```
+Les résultats sont numériquement exacts mais dépendent des valeurs des paramètres — ils ne fournissent pas de formule analytique générale.
 
 #### Autres limites théoriques
 
@@ -295,7 +301,12 @@ S_h^2                          ← utiliser ** pas ^
 - L'app calcule R₀ pour chaque paramètre augmenté/diminué de ce %
 - Graphique en barres : paramètres les plus influents en haut
 
-**⚠️ Note** : pour les modèles ≥ 5×5, les paramètres affichés sont ceux identifiés dans R₀ numérique — entrer d'abord les valeurs dans "Évaluation Numérique".
+**Pour les modèles ≤ 4×4 (formule symbolique)** : l'élasticité est calculée analytiquement depuis la formule de R₀.
+
+**Pour les modèles ≥ 5×5 (méthode numérique)** :
+- Entrer d'abord les valeurs numériques dans "Évaluation Numérique"
+- L'élasticité est calculée par différences finies (perturbation ±0.1% de chaque paramètre)
+- La sensibilité globale LHS+PRCC fonctionne aussi — définir les plages de variation de chaque paramètre
 
 ### 3.8 Onglet Scénarios
 
@@ -353,7 +364,8 @@ S_h^2                          ← utiliser ** pas ^
 - ✅ Gérer les modèles **métapopulation** (plusieurs patches spatiaux)
 - ✅ Gérer les modèles avec **démographie** (naissance/mort)
 - ✅ Gérer les modèles avec **vaccination** (DFE non trivial)
-- ✅ Calculer l'**élasticité** de R₀ par rapport à chaque paramètre
+- ✅ Calculer l'**élasticité** de R₀ par rapport à chaque paramètre, pour **tous les modèles** (analytique ≤ 4×4, différences finies ≥ 5×5)
+- ✅ Calculer la **sensibilité globale LHS+PRCC** pour tous les modèles, y compris ≥ 5×5
 - ✅ Comparer R₀ par **scénarios** (différentes valeurs de paramètres)
 - ✅ Afficher le **diagramme compartimentale** interactif
 - ✅ **Sauvegarder/charger** les modèles au format JSON
@@ -364,7 +376,7 @@ S_h^2                          ← utiliser ** pas ^
 
 ## 6. Ce que le programme ne peut pas faire
 
-- ❌ **Formule symbolique pour K ≥ 5×5** : le théorème d'Abel-Ruffini interdit toute formule analytique générale. R₀ est calculé numériquement uniquement.
+- ❌ **Formule symbolique de R₀ pour K ≥ 5×5** : le théorème d'Abel-Ruffini interdit toute formule analytique générale. R₀ est calculé numériquement uniquement. La sensibilité reste disponible par différences finies (voir section 2.4).
 - ❌ **Expressions non-rationnelles** : les taux ne peuvent pas contenir `exp()`, `log()`, `sin()` — SymPy peut échouer ou donner des résultats incorrects.
 - ❌ **DFE multiples** : si le modèle admet plusieurs équilibres sans maladie, la méthode NGM ne s'applique pas directement — l'utilisateur doit choisir lequel utiliser.
 - ❌ **Modèles discrets** : la méthode NGM implémentée ici est pour les systèmes d'EDO continus. Elle ne s'applique pas aux modèles en temps discret.
