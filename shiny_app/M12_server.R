@@ -234,6 +234,8 @@ observeEvent(input$btn_load_model, {
   rv_scenarios(list())        # efface scenarios
   rv_scenarios_result(NULL)
   tryCatch(rv_sensitivity_result(NULL), error = function(e) NULL)
+  tryCatch(rv_heatmap_result(NULL),      error = function(e) NULL)
+  tryCatch(rv_global_sens_result(NULL),  error = function(e) NULL)
   tryCatch(rv_diag(NULL),               error = function(e) NULL)
 
   # Desactiver le flag de chargement -- les observers peuvent reprendre

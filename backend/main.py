@@ -127,6 +127,7 @@ class LHSPRCCRequest(BaseModel):
     R0_expr_str      : str
     param_bounds_dict: Dict[str, list]   # {"beta": [0.1, 1.0], ...}
     N                : int = Field(default=500, ge=50, le=5000)
+    ngm_ctx          : Optional[Any] = None  # contexte NGM pour methode numerique
 
 
 class HarteminkR0Request(BaseModel):
@@ -298,10 +299,12 @@ def sensitivity_lhs_prcc(req: LHSPRCCRequest):
     Peut etre long pour N > 1000 -- prevu pour tourner en background.
     """
     try:
+        # Pour methode numerique (R0_expr_str="?"), passer ngm_ctx
         raw = ngm_engine.global_sensitivity_lhs_prcc(
             req.R0_expr_str,
             req.param_bounds_dict,
-            req.N
+            req.N,
+            ngm_ctx=req.ngm_ctx if req.ngm_ctx else None
         )
         result = json.loads(raw) if isinstance(raw, (str, bytes)) else raw
         return JSONResponse(content=json.loads(json.dumps(result, default=str)))

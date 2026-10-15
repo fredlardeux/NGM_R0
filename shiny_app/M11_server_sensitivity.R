@@ -13,6 +13,25 @@
   if (length(in_R0) == 0) all_p else in_R0
 }
 
+# Helper : detecter si R0 est en methode numerique (pas de formule symbolique)
+.is_numeric_method <- function(r) {
+  if (is.null(r) || !scal_lgl(r$ok)) return(FALSE)
+  R0_expr <- r$steps$`7_eigenvalues`$R0_expr_str %||% ""
+  trimws(R0_expr) == "?" || r$steps$`7_eigenvalues`$method == "numeric"
+}
+
+# Helper : evaluer R0 numeriquement via compute_ngm (pour methode numerique)
+.eval_R0_numeric_ngm <- function(r, param_vals, url) {
+  ctx <- build_sympy_context(rv_comp(), rv_flux(), rv_dfe(), rv_params())
+  ctx$infected_states <- rv_infected_order()
+  ctx$param_vals      <- param_vals
+  res <- api_compute_ngm(ctx, url)
+  if (!scal_lgl(res$ok)) return(list(ok=FALSE, error=res$error))
+  R0_val <- res$steps$`7_eigenvalues`$R0_numeric_direct %||%
+            as.numeric(res$steps$`7_eigenvalues`$R0_expr_str)
+  list(ok=TRUE, R0_numeric=R0_val)
+}
+
 # ReactiveVals attendues : rv_ngm_result, rv_params, ngm_py
 # ReactiveVals déclarées ici : rv_sensitivity_params, rv_sensitivity_result,
 #                               rv_heatmap_result
@@ -173,7 +192,48 @@ observeEvent(input$btn_compute_sensitivity, {
                      id = "sens_compute", type = "message", duration = NULL)
   url <- NGM_BASE_URL
   if (is.null(url)) { showNotification("Serveur FastAPI non disponible.", type="error"); return(NULL) }
-    result <- api_sensitivity_local(R0_expr_str, param_vals, url)
+
+    # Pour les grands modeles (methode numerique), utiliser differences finies
+    if (.is_numeric_method(r)) {
+      result <- tryCatch({
+        # Calculer R0 baseline
+        r0_base <- .eval_R0_numeric_ngm(r, param_vals, url)
+        if (!scal_lgl(r0_base$ok))
+          return(list(ok=FALSE, error=r0_base$error %||% "Erreur calcul R0 baseline"))
+        R0_val <- r0_base$R0_numeric
+        eps    <- 0.001  # 0.1% de perturbation
+        sensitivities_list <- lapply(seq_along(params_in_R0), function(ki) {
+          pname   <- params_in_R0[ki]
+          pv_orig <- as.numeric(param_vals[[pname]])
+          # R0 avec param + eps
+          pv_h <- param_vals; pv_h[[pname]] <- pv_orig * (1 + eps)
+          r0_h <- .eval_R0_numeric_ngm(r, pv_h, url)
+          # R0 avec param - eps
+          pv_l <- param_vals; pv_l[[pname]] <- pv_orig * (1 - eps)
+          r0_l <- .eval_R0_numeric_ngm(r, pv_l, url)
+          if (!scal_lgl(r0_h$ok) || !scal_lgl(r0_l$ok)) return(NULL)
+          deriv     <- (r0_h$R0_numeric - r0_l$R0_numeric) / (2 * eps * pv_orig)
+          elasticity <- deriv * pv_orig / R0_val
+          list(rank=ki, parameter=pname, value=pv_orig,
+               derivative=deriv, elasticity=elasticity,
+               sensitivity_index=abs(elasticity),
+               direction=if(elasticity>=0) "positive" else "negative")
+        })
+        sensitivities_list <- Filter(Negate(is.null), sensitivities_list)
+        # Trier par |elasticite|
+        ord <- order(sapply(sensitivities_list,
+                            function(x) abs(x$sensitivity_index)),
+                     decreasing=TRUE)
+        sensitivities_list <- sensitivities_list[ord]
+        for (ki in seq_along(sensitivities_list))
+          sensitivities_list[[ki]]$rank <- ki
+        list(ok=TRUE, R0_value=R0_val,
+             sensitivities=do.call(rbind, lapply(sensitivities_list, as.data.frame)),
+             method="numeric_fd")
+      }, error=function(e) list(ok=FALSE, error=e$message))
+    } else {
+      result <- api_sensitivity_local(R0_expr_str, param_vals, url)
+    }
     removeNotification("sens_compute")
 
     if (scal_lgl(result$ok)) {
@@ -403,8 +463,14 @@ output$tornado_plot <- renderPlotly({
     tryCatch({
       ph <- param_vals; ph[[param]] <- base_val * (1 + pct)
       pl <- param_vals; pl[[param]] <- base_val * (1 - pct)
-      rh <- api_evaluate_r0(R0_expr_str, ph, url)
-      rl <- api_evaluate_r0(R0_expr_str, pl, url)
+      rh <- if (.is_numeric_method(r))
+        .eval_R0_numeric_ngm(r, ph, url)
+      else
+        api_evaluate_r0(R0_expr_str, ph, url)
+      rl <- if (.is_numeric_method(r))
+        .eval_R0_numeric_ngm(r, pl, url)
+      else
+        api_evaluate_r0(R0_expr_str, pl, url)
       if (!scal_lgl(rh$ok) || !scal_lgl(rl$ok)) return(NULL)
       imp_h <- (rh$R0_numeric - R0_value) / R0_value * 100
       imp_l <- (rl$R0_numeric - R0_value) / R0_value * 100
@@ -704,7 +770,10 @@ observeEvent(input$btn_generate_heatmap, {
         pv <- fixed_params
         pv[[param_x]] <- x_values[j]
         pv[[param_y]] <- y_values[i]
-        res <- api_evaluate_r0(R0_expr_str, pv, url)
+        res <- if (.is_numeric_method(r))
+          .eval_R0_numeric_ngm(r, pv, url)
+        else
+          api_evaluate_r0(R0_expr_str, pv, url)
         if (scal_lgl(res$ok) && !is.null(res$R0_numeric) &&
             is.finite(as.numeric(scal(res$R0_numeric))))
           R0_matrix[i, j] <- as.numeric(scal(res$R0_numeric))
@@ -1000,8 +1069,16 @@ observeEvent(input$btn_run_global_sens, {
     detail  = "Cela peut prendre quelques secondes.",
     value   = 0.3, {
       result <- tryCatch({
+        # Pour methode numerique, utiliser compute_ngm au lieu de evaluate_r0
+        ctx_global <- if (.is_numeric_method(r)) {
+          ctx_tmp <- build_sympy_context(rv_comp(), rv_flux(),
+                                         rv_dfe(), rv_params())
+          ctx_tmp$infected_states <- rv_infected_order()
+          ctx_tmp
+        } else NULL
         result_tmp <- api_sensitivity_lhs_prcc(
-          R0_expr_str, param_bounds, N, url)
+          R0_expr_str, param_bounds, N, url,
+          ngm_ctx = ctx_global)
         incProgress(0.6)
         result_tmp
       }, error = function(e) {

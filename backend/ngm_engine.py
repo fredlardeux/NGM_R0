@@ -1171,7 +1171,7 @@ def sensitivity_analysis(R0_expr_str, param_vals_dict):
 # SECTION 7 -- Sensibilité globale : LHS + PRCC
 # ==============================================================================
 
-def global_sensitivity_lhs_prcc(R0_expr_str, param_bounds_dict, N=500):
+def global_sensitivity_lhs_prcc(R0_expr_str, param_bounds_dict, N=500, ngm_ctx=None):
     """
     Analyse de sensibilité globale par échantillonnage Latin Hypercube (LHS)
     et calcul des Partial Rank Correlation Coefficients (PRCC).
@@ -1267,11 +1267,28 @@ def global_sensitivity_lhs_prcc(R0_expr_str, param_bounds_dict, N=500):
         R0_values = np.full(N, np.nan)
         n_failed  = 0
 
+        # Detecter methode numerique
+        is_numeric_mode = (R0_expr_str.strip() == "?" and ngm_ctx is not None)
+
         for i in range(N):
             try:
-                subs = {param_syms[param_names[j]]: float(sample[i, j])
-                        for j in range(k)}
-                val = float(R0_sym.subs(subs).evalf())
+                sample_dict = {param_names[j]: float(sample[i, j])
+                               for j in range(k)}
+                if is_numeric_mode:
+                    # Methode numerique : appel compute_ngm avec param_vals
+                    ctx_copy = dict(ngm_ctx)
+                    ctx_copy["param_vals"] = sample_dict
+                    r_tmp = compute_ngm(ctx_copy)
+                    if not r_tmp.get("ok"):
+                        n_failed += 1
+                        continue
+                    s7  = r_tmp["steps"]["7_eigenvalues"]
+                    raw = s7.get("R0_numeric_direct") or s7.get("R0_expr_str")
+                    val = float(raw) if raw and str(raw) != "?" else float("nan")
+                else:
+                    subs = {param_syms[param_names[j]]: float(sample[i, j])
+                            for j in range(k)}
+                    val = float(R0_sym.subs(subs).evalf())
                 if math.isfinite(val) and val >= 0:
                     R0_values[i] = val
                 else:

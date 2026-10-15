@@ -224,17 +224,19 @@ api_sensitivity_local <- function(R0_expr_str, param_vals_dict, base_url) {
 #' @param base_url          character
 #' @return list -- {ok, N_actual, prcc, scatter_data, R0_stats}
 api_sensitivity_lhs_prcc <- function(R0_expr_str, param_bounds_dict,
-                                      N = 500, base_url) {
+                                      N = 500, base_url,
+                                      ngm_ctx = NULL) {
   # Convertir les bornes en listes (jsonlite serialise c(a,b) en [a,b])
   bounds <- lapply(param_bounds_dict, function(b) as.list(b))
-  .api_post(
-    "/sensitivity_lhs_prcc",
-    list(R0_expr_str       = R0_expr_str,
-         param_bounds_dict = bounds,
-         N                 = as.integer(N)),
-    base_url,
-    timeout = 300   # peut etre long pour N eleve
-  )
+  body <- list(R0_expr_str       = R0_expr_str,
+               param_bounds_dict = bounds,
+               N                 = as.integer(N))
+  # Pour methode numerique (R0_expr_str="?"), inclure le contexte NGM
+  if (!is.null(ngm_ctx) &&
+      (is.null(R0_expr_str) || trimws(R0_expr_str) == "?")) {
+    body$ngm_ctx <- ngm_ctx
+  }
+  .api_post("/sensitivity_lhs_prcc", body, base_url, timeout = 300)
 }
 
 
