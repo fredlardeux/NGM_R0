@@ -21,14 +21,16 @@
 }
 
 # Helper : evaluer R0 numeriquement via compute_ngm (pour methode numerique)
-.eval_R0_numeric_ngm <- function(r, param_vals, url) {
-  ctx <- build_sympy_context(rv_comp(), rv_flux(), rv_dfe(), rv_params())
-  ctx$infected_states <- rv_infected_order()
-  ctx$param_vals      <- param_vals
+# ctx_base : contexte NGM pre-construit (sans param_vals) passe depuis le server
+.eval_R0_numeric_ngm <- function(ctx_base, param_vals, url) {
+  ctx <- ctx_base
+  ctx$param_vals <- param_vals
   res <- api_compute_ngm(ctx, url)
-  if (!scal_lgl(res$ok)) return(list(ok=FALSE, error=res$error))
-  R0_val <- res$steps$`7_eigenvalues`$R0_numeric_direct %||%
-            as.numeric(res$steps$`7_eigenvalues`$R0_expr_str)
+  if (!scal_lgl(res$ok)) return(list(ok=FALSE, error=res$error %||% "Erreur NGM"))
+  s7  <- res$steps$`7_eigenvalues`
+  R0_val <- s7$R0_numeric_direct %||% suppressWarnings(as.numeric(s7$R0_expr_str))
+  if (is.null(R0_val) || is.na(R0_val))
+    return(list(ok=FALSE, error="R0 numerique non disponible"))
   list(ok=TRUE, R0_numeric=R0_val)
 }
 
@@ -197,7 +199,10 @@ observeEvent(input$btn_compute_sensitivity, {
     if (.is_numeric_method(r)) {
       result <- tryCatch({
         # Calculer R0 baseline
-        r0_base <- .eval_R0_numeric_ngm(r, param_vals, url)
+        # Construire ctx_base UNE FOIS (sans param_vals)
+        ctx_base <- build_sympy_context(rv_comp(), rv_flux(), rv_dfe(), rv_params())
+        ctx_base$infected_states <- rv_infected_order()
+        r0_base <- .eval_R0_numeric_ngm(ctx_base, param_vals, url)
         if (!scal_lgl(r0_base$ok))
           return(list(ok=FALSE, error=r0_base$error %||% "Erreur calcul R0 baseline"))
         R0_val <- r0_base$R0_numeric
@@ -207,10 +212,10 @@ observeEvent(input$btn_compute_sensitivity, {
           pv_orig <- as.numeric(param_vals[[pname]])
           # R0 avec param + eps
           pv_h <- param_vals; pv_h[[pname]] <- pv_orig * (1 + eps)
-          r0_h <- .eval_R0_numeric_ngm(r, pv_h, url)
+          r0_h <- .eval_R0_numeric_ngm(ctx_base, pv_h, url)
           # R0 avec param - eps
           pv_l <- param_vals; pv_l[[pname]] <- pv_orig * (1 - eps)
-          r0_l <- .eval_R0_numeric_ngm(r, pv_l, url)
+          r0_l <- .eval_R0_numeric_ngm(ctx_base, pv_l, url)
           if (!scal_lgl(r0_h$ok) || !scal_lgl(r0_l$ok)) return(NULL)
           deriv     <- (r0_h$R0_numeric - r0_l$R0_numeric) / (2 * eps * pv_orig)
           elasticity <- deriv * pv_orig / R0_val
@@ -464,11 +469,11 @@ output$tornado_plot <- renderPlotly({
       ph <- param_vals; ph[[param]] <- base_val * (1 + pct)
       pl <- param_vals; pl[[param]] <- base_val * (1 - pct)
       rh <- if (.is_numeric_method(r))
-        .eval_R0_numeric_ngm(r, ph, url)
+        .eval_R0_numeric_ngm(ctx_base, ph, url)
       else
         api_evaluate_r0(R0_expr_str, ph, url)
       rl <- if (.is_numeric_method(r))
-        .eval_R0_numeric_ngm(r, pl, url)
+        .eval_R0_numeric_ngm(ctx_base, pl, url)
       else
         api_evaluate_r0(R0_expr_str, pl, url)
       if (!scal_lgl(rh$ok) || !scal_lgl(rl$ok)) return(NULL)
@@ -771,7 +776,7 @@ observeEvent(input$btn_generate_heatmap, {
         pv[[param_x]] <- x_values[j]
         pv[[param_y]] <- y_values[i]
         res <- if (.is_numeric_method(r))
-          .eval_R0_numeric_ngm(r, pv, url)
+          .eval_R0_numeric_ngm(ctx_base, pv, url)
         else
           api_evaluate_r0(R0_expr_str, pv, url)
         if (scal_lgl(res$ok) && !is.null(res$R0_numeric) &&

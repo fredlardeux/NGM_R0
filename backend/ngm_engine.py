@@ -1262,13 +1262,15 @@ def global_sensitivity_lhs_prcc(R0_expr_str, param_bounds_dict, N=500, ngm_ctx=N
         # ── 4. Évaluer R₀ pour chaque point ─────────────────────────────────
         # Créer les symboles SymPy UNE SEULE FOIS (évite re-parsing à chaque iter)
         param_syms  = make_symbols(param_names)
-        R0_sym      = sp.sympify(R0_expr_str, locals=param_syms)
+
+        # Detecter methode numerique AVANT sympify pour eviter l'erreur
+        is_numeric_mode = (R0_expr_str.strip() == "?" and ngm_ctx is not None)
+
+        # Creer R0_sym seulement si methode symbolique
+        R0_sym = None if is_numeric_mode else sp.sympify(R0_expr_str, locals=param_syms)
 
         R0_values = np.full(N, np.nan)
         n_failed  = 0
-
-        # Detecter methode numerique
-        is_numeric_mode = (R0_expr_str.strip() == "?" and ngm_ctx is not None)
 
         for i in range(N):
             try:
@@ -1286,6 +1288,9 @@ def global_sensitivity_lhs_prcc(R0_expr_str, param_bounds_dict, N=500, ngm_ctx=N
                     raw = s7.get("R0_numeric_direct") or s7.get("R0_expr_str")
                     val = float(raw) if raw and str(raw) != "?" else float("nan")
                 else:
+                    if R0_sym is None:
+                        n_failed += 1
+                        continue
                     subs = {param_syms[param_names[j]]: float(sample[i, j])
                             for j in range(k)}
                     val = float(R0_sym.subs(subs).evalf())
