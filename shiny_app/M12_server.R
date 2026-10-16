@@ -224,7 +224,7 @@ observeEvent(input$btn_load_model, {
     message("  ", dfe_loaded$state_id[i], " = ", dfe_loaded$dfe_expr[i])
   }
 
-  # -- Reset complet de tous les calculs du modele precedent ----------------
+  # -- Reset complet de tous les calculs du modele precedent ------------------
   rv_ngm_result(NULL)         # efface R0 symbolique
   rv_ngm_computed_hash(NULL)  # force recalcul NGM
   rv_infected_order(character(0))
