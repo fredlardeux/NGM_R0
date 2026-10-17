@@ -208,7 +208,7 @@ observeEvent(input$btn_compute_sensitivity, {
         R0_val <- r0_base$R0_numeric
         eps    <- 0.001  # 0.1% de perturbation
         sensitivities_list <- lapply(seq_along(params_in_R0), function(ki) {
-          pname   <- params_in_R0[ki]
+          pname   <- params_in_R0[[ki]]  # [[]] pour extraire scalaire, pas liste
           pv_orig <- as.numeric(param_vals[[pname]])
           # R0 avec param + eps
           pv_h <- param_vals; pv_h[[pname]] <- pv_orig * (1 + eps)
