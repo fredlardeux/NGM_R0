@@ -42,10 +42,11 @@ observe({
         new_dfe$dfe_comment[i] <- old$dfe_comment[j[1]]
       }
     }
+    rv_dfe(new_dfe)
   }
-  # Si nouveau modele (same_model=FALSE) : utiliser build_dfe_table tel quel
-  # Le chargement JSON mettra ensuite rv_dfe() avec les valeurs correctes
-  rv_dfe(new_dfe)
+  # Si nouveau modele (same_model=FALSE) : NE PAS mettre a jour rv_dfe ici
+  # Le chargement JSON (M12) a deja mis les valeurs correctes via rv_dfe()
+  # et le shinyjs::delay les re-forcera apres cet observer
   rv_dfe_validated(FALSE)
   rv_dfe_sym_result(NULL)   # reset badge -> "En attente"
 

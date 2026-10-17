@@ -224,7 +224,7 @@ observeEvent(input$btn_load_model, {
     message("  ", dfe_loaded$state_id[i], " = ", dfe_loaded$dfe_expr[i])
   }
 
-  # -- Reset complet de tous les calculs du modele precedent ------------------
+  # -- Reset complet de tous les calculs du modele precedent ----------------
   rv_ngm_result(NULL)         # efface R0 symbolique
   rv_ngm_computed_hash(NULL)  # force recalcul NGM
   rv_infected_order(character(0))
@@ -242,10 +242,22 @@ observeEvent(input$btn_load_model, {
   rv_loading(FALSE)
 
   # Re-forcer le DFE et les params APRES rv_loading(FALSE)
-  # car l'observer M09 peut se declencher immediatement apres le flag
-  # et ecraser le DFE avec les valeurs auto du modele precedent
+  # L'observer M09 peut se declencher juste apres rv_loading(FALSE)
+  # et ecraser le DFE. On re-force une derniere fois apres un delai.
   if (!is.null(result$dfe_df))    rv_dfe(result$dfe_df)
   if (!is.null(result$params_df)) rv_params(result$params_df)
+
+  # Second re-forcage via shinyjs::delay pour s'executer APRES les observers
+  local({
+    dfe_final    <- result$dfe_df
+    params_final <- result$params_df
+    shinyjs::delay(200, {
+      if (!is.null(dfe_final))    rv_dfe(dfe_final)
+      if (!is.null(params_final)) rv_params(params_final)
+      rv_dfe_validated(FALSE)
+      rv_dfe_sym_result(NULL)
+    })
+  })
   rv_load_status(list(
     ok = TRUE, type = "success",
     message = paste0("\u2705 '", result$model_name, "' \u2014 ",
