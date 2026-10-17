@@ -20,7 +20,10 @@
 #' @return logical
 has_demography <- function(flux_df) {
   if (nrow(flux_df) == 0) return(FALSE)
-  any(flux_df$process_type %in% DEMOGRAPHIC_PROCESS_TYPES)
+  # Un flux est demographique SEULEMENT si is_demographic = TRUE
+  # Exclut les morts dues a la maladie (is_demographic=FALSE)
+  any(flux_df$process_type %in% DEMOGRAPHIC_PROCESS_TYPES &
+      vapply(flux_df$is_demographic, isTRUE, logical(1)))
 }
 
 #' Vérifie si une espèce donnée a de la démographie dans ses flux
@@ -37,7 +40,14 @@ has_demography_for_species <- function(flux_df, comp_df, species_name) {
   ]
   if (length(sp_ids) == 0) return(FALSE)
 
-  demo <- flux_df[flux_df$process_type %in% DEMOGRAPHIC_PROCESS_TYPES, ]
+  # Un flux est demographique SEULEMENT si is_demographic = TRUE
+  # ET process_type in DEMOGRAPHIC_PROCESS_TYPES
+  # Cela exclut les morts dues a la maladie (mu_tb, mort infectieux)
+  # qui ont process_type="death" mais is_demographic=FALSE
+  demo <- flux_df[
+    flux_df$process_type %in% DEMOGRAPHIC_PROCESS_TYPES &
+    vapply(flux_df$is_demographic, isTRUE, logical(1)),
+  ]
   if (nrow(demo) == 0) return(FALSE)
 
   any(demo$from_state_id %in% sp_ids | demo$to_state_id %in% sp_ids)
