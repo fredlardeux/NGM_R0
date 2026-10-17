@@ -178,6 +178,11 @@ server <- function(input, output, session) {
   # Bloque les observers reactifs qui recalculent le DFE/params
   rv_loading           <- reactiveVal(FALSE)
 
+  # DFE/params en attente de re-forcage apres chargement JSON
+  # M09 surveille ces valeurs et les applique apres ses propres recalculs
+  rv_pending_dfe       <- reactiveVal(NULL)
+  rv_pending_params    <- reactiveVal(NULL)
+
   # -- Rendre api_url et check_api disponibles pour les modules --------------
   # (passes via l'environnement local = TRUE)
 

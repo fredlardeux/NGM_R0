@@ -8,7 +8,25 @@
 
 
 # =============================================================================
-# SECTION 1 -- Mise à jour automatique DFE + Paramètres
+# SECTION 0 -- Observer rv_pending_dfe : re-forcage DFE apres chargement JSON
+# =============================================================================
+# Apres rv_loading(FALSE), M09 peut recalculer le DFE automatiquement.
+# M12 stocke le DFE correct dans rv_pending_dfe() pour le re-appliquer apres.
+observe({
+  pending_dfe    <- rv_pending_dfe()
+  pending_params <- rv_pending_params()
+  if (is.null(pending_dfe)) return()
+  rv_dfe(pending_dfe)
+  if (!is.null(pending_params)) rv_params(pending_params)
+  rv_dfe_validated(FALSE)
+  rv_dfe_sym_result(NULL)
+  rv_pending_dfe(NULL)
+  rv_pending_params(NULL)
+}) |> bindEvent(rv_pending_dfe(), ignoreNULL = TRUE, ignoreInit = TRUE)
+
+
+# =============================================================================
+# SECTION 1 -- Mise a jour automatique DFE + Parametres
 # =============================================================================
 
 # Observer : reconstruit le DFE et la table params à chaque changement

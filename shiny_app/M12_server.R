@@ -247,17 +247,10 @@ observeEvent(input$btn_load_model, {
   if (!is.null(result$dfe_df))    rv_dfe(result$dfe_df)
   if (!is.null(result$params_df)) rv_params(result$params_df)
 
-  # Second re-forcage via shinyjs::delay pour s'executer APRES les observers
-  local({
-    dfe_final    <- result$dfe_df
-    params_final <- result$params_df
-    shinyjs::delay(200, {
-      if (!is.null(dfe_final))    rv_dfe(dfe_final)
-      if (!is.null(params_final)) rv_params(params_final)
-      rv_dfe_validated(FALSE)
-      rv_dfe_sym_result(NULL)
-    })
-  })
+  # Second re-forcage : stocker le DFE correct pour le reappliquer
+  # apres que tous les observers reactifs se soient executes
+  rv_pending_dfe(result$dfe_df)
+  rv_pending_params(result$params_df)
   rv_load_status(list(
     ok = TRUE, type = "success",
     message = paste0("\u2705 '", result$model_name, "' \u2014 ",
