@@ -600,7 +600,7 @@ observeEvent(input$btn_compute_ngm, {
     pos_str <- if (length(parts_pos) > 0)
       paste(parts_pos, collapse = " + ") else "0"
     neg_str <- if (length(parts_neg) > 0)
-      paste(paste0("(", parts_neg, ")"), collapse = " + ") else ""
+      paste(paste0("(", parts_neg, ")"), collapse = " - ") else ""
 
     vi[[sid]] <- if (neg_str == "") pos_str
                  else paste0(pos_str, " - ", neg_str)
