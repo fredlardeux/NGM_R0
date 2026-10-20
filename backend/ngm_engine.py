@@ -620,6 +620,51 @@ def compute_R0_from_matrix(K, n, symbolic_timeout_s=15):
                   f"R0 = rayon spectral numerique."))
 
 
+
+def _prune_dominated_eigenvalues(abs_vals, n_samples=200, seed=12345):
+    """
+    Retourne les indices des valeurs propres (|lambda|) qui peuvent etre
+    dominantes. Une valeur propre est ecartee seulement si une autre est
+    >= elle sur TOUS les echantillons aleatoires de parametres positifs
+    (log-uniformes entre 0.01 et 100). Si l'ordre varie selon les
+    parametres, plusieurs indices restent et l'appelant utilise Max().
+    En cas d'echec numerique, tous les indices sont conserves (sans risque).
+    """
+    import numpy as np
+    n = len(abs_vals)
+    all_idx = list(range(n))
+    try:
+        syms = sorted(set().union(*[a.free_symbols for a in abs_vals]), key=str)
+        if not syms:
+            return all_idx
+        rng = np.random.default_rng(seed)
+        cols = [np.exp(rng.uniform(np.log(0.01), np.log(100.0), n_samples))
+                .astype(complex) for _ in syms]
+        vals = []
+        for a in abs_vals:
+            f = sp.lambdify(syms, a, modules="numpy")
+            v = np.abs(np.asarray(f(*cols), dtype=complex))
+            if not np.all(np.isfinite(v)):
+                return all_idx
+            vals.append(v)
+        keep = []
+        for i in range(n):
+            dominated = False
+            for j in range(n):
+                if j == i:
+                    continue
+                j_ge_i = np.all(vals[j] >= vals[i] * (1 - 1e-9))
+                i_ge_j = np.all(vals[i] >= vals[j] * (1 - 1e-9))
+                if j_ge_i and (not i_ge_j or j < i):
+                    dominated = True
+                    break
+            if not dominated:
+                keep.append(i)
+        return keep if keep else all_idx
+    except Exception:
+        return all_idx
+
+
 def _r0_symbolic(K, n):
     """Calcul symbolique exact (n <= 3, ou tente pour n = 4)."""
     try:
@@ -663,16 +708,20 @@ def _r0_symbolic(K, n):
             except Exception:
                 a = sp.Abs(ev)
             abs_vals.append(a)
+        # Ne jamais choisir la 1ere valeur propre par defaut : si l'ordre
+        # depend des parametres, R0 = Max(...) de toutes les candidates.
+        keep = _prune_dominated_eigenvalues(abs_vals)
         try:
-            candidate = abs_vals[0]
-            for av in abs_vals[1:]:
-                if sp.simplify(av - candidate).is_positive:
-                    candidate = av
-            R0, _ = try_simplify(candidate)
+            if len(keep) == 1:
+                R0, _ = try_simplify(abs_vals[keep[0]])
+            else:
+                R0 = sp.Max(*[abs_vals[k] for k in keep])
         except Exception:
             R0 = sp.Max(*abs_vals)
         note = (f"{len(nonzero_evals)} valeurs propres non nulles. "
-                "R0 = rho(K) = max|lambda_i|.")
+                "R0 = rho(K) = max|lambda_i| (valeur dominante determinee "
+                "par echantillonnage numerique des parametres; Max() si "
+                "l'ordre depend des parametres).")
 
     # Nettoyage final
     try:
