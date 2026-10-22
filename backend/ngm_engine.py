@@ -1195,7 +1195,11 @@ def sensitivity_analysis(R0_expr_str, param_vals_dict):
                 "derivative_latex": str(dR0_dp_s),
                 "elasticity":       elasticity,
                 "sensitivity_index":abs(elasticity),
-                "direction": "positive" if dR0_dp_num > 0 else "negative"
+                # "neutral" si R0 n'en depend pas localement (ex: souche non
+                # dominante dans un Max) : evite d'afficher une fleche trompeuse
+                "direction": ("neutral" if abs(elasticity) < 1e-9
+                              else "positive" if dR0_dp_num > 0
+                              else "negative")
             })
 
         # Trier par indice de sensibilité décroissant

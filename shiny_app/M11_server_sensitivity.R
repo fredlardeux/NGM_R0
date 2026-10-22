@@ -222,7 +222,8 @@ observeEvent(input$btn_compute_sensitivity, {
           list(rank=ki, parameter=pname, value=pv_orig,
                derivative=deriv, elasticity=elasticity,
                sensitivity_index=abs(elasticity),
-               direction=if(elasticity>=0) "positive" else "negative")
+               direction=if(abs(elasticity) < 1e-9) "neutral"
+                         else if(elasticity > 0) "positive" else "negative")
         })
         sensitivities_list <- Filter(Negate(is.null), sensitivities_list)
         # Trier par |elasticite|
@@ -333,7 +334,9 @@ output$sensitivity_results <- renderUI({
           else
             tags$span(style = "background:#28a745;color:white;padding:3px 8px;
                       border-radius:12px;font-size:11px;font-weight:600;", "LOW")
-          dir_icon <- if (row$direction == "positive") "\u2b06\ufe0f" else "\u2b07\ufe0f"
+          dir_icon <- if (row$direction == "positive") "\u2b06\ufe0f"
+                      else if (row$direction == "neutral") "\u2796"
+                      else "\u2b07\ufe0f"
           tags$tr(
             tags$td(style = "text-align:center;font-weight:600;", row$rank),
             tags$td(style = "font-family:monospace;font-weight:600;", row$parameter),
