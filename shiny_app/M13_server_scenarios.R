@@ -115,7 +115,10 @@ output$scenarios_content <- renderUI({
                padding:10px 16px;margin-bottom:16px;",
       tags$span(style = "font-weight:600;color:#1a5fa8;", "R\u2080 = "),
       tags$code(style = "font-size:13px;color:#333;",
-                r$steps$`7_eigenvalues`$R0_expr_str)
+                if (identical(trimws(as.character(
+                      r$steps$`7_eigenvalues`$R0_expr_str)), "?"))
+                  "methode numerique : rayon spectral de K, calcule pour chaque scenario"
+                else r$steps$`7_eigenvalues`$R0_expr_str)
     ),
 
     # Boutons
@@ -430,6 +433,35 @@ observeEvent(input$btn_run_scenarios, {
     return()
   }
 
+  # Modeles en methode numerique (K >= 5x5) : R0_expr_str vaut "?", il n'y a
+  # pas de formule a evaluer. On recalcule K avec les valeurs de chaque
+  # scenario via /compute_ngm (meme principe que M10 et M11).
+  numeric_method <- is.null(R0_expr_str) ||
+    identical(trimws(as.character(R0_expr_str)), "?") ||
+    identical(scal_chr(r$steps$`7_eigenvalues`$method, ""), "numeric")
+  ctx_base <- NULL
+  if (numeric_method) {
+    ctx_base <- build_sympy_context(rv_comp(), rv_flux(), rv_dfe(), rv_params())
+    ctx_base$infected_states <- rv_infected_order()
+  }
+  eval_scenario <- function(params_sc) {
+    if (!numeric_method)
+      return(api_evaluate_r0(R0_expr_str, params_sc, url))
+    ctx <- ctx_base
+    ctx$param_vals <- params_sc
+    rr <- api_compute_ngm(ctx, url)
+    if (!scal_lgl(rr$ok))
+      return(list(ok = FALSE,
+                  error = scal_chr(rr$error, "Erreur de calcul NGM")))
+    s7  <- rr$steps$`7_eigenvalues`
+    val <- suppressWarnings(as.numeric(scal(s7$R0_numeric_direct)))
+    if (length(val) == 0 || is.na(val))
+      val <- suppressWarnings(as.numeric(scal(s7$R0_expr_str)))
+    if (length(val) == 0 || is.na(val))
+      return(list(ok = FALSE, error = "R0 numerique non disponible"))
+    list(ok = TRUE, R0_numeric = val)
+  }
+
   results <- list()
   withProgress(message = "Calcul des scenarios...", value = 0, {
     for (i in seq_along(scenarios)) {
@@ -438,7 +470,7 @@ observeEvent(input$btn_run_scenarios, {
                   detail = paste0(sc$name, " (", i, "/",
                                   length(scenarios), ")"))
       res <- tryCatch(
-        api_evaluate_r0(R0_expr_str, sc$params, url),
+        eval_scenario(sc$params),
         error = function(e)
           list(ok = FALSE, error = e$message)
       )
@@ -448,7 +480,7 @@ observeEvent(input$btn_run_scenarios, {
         color = sc$color,
         params= sc$params,
         ok    = scal_lgl(res$ok),
-        R0    = if (scal_lgl(res$ok)) round(as.numeric(scal(res$R0_numeric)), 4)
+        R0    = if (scal_lgl(res$ok)) round(as.numeric(scal(res$R0_numeric)), 10)
                 else NA_real_,
         error = if (!scal_lgl(res$ok)) res$error else NULL
       )
@@ -561,7 +593,7 @@ output$scenarios_results_ui <- renderUI({
               )
             ),
             tags$td(style = "text-align:right;font-weight:700;font-size:15px;",
-                    if (!is.na(R0_val)) format(R0_val, nsmall = 4) else "Err"),
+                    if (!is.na(R0_val)) format(round(R0_val, 4), nsmall = 4) else "Err"),
             tags$td(style = "text-align:center;", .epi_badge(R0_val)),
             tags$td(style = paste0("text-align:right;font-weight:600;",
                                    "color:", delta_col, ";"), delta_str),
@@ -604,7 +636,7 @@ output$scenarios_bar_plot <- renderPlotly({
       if (!is.null(v) && !is.na(v)) paste0(p, " = ", signif(v, 4))
       else paste0(p, " = ?")
     }), collapse = "<br>")
-    paste0("<b>", x$name, "</b><br>R\u2080 = ", x$R0, "<br><br>", pstr)
+    paste0("<b>", x$name, "</b><br>R\u2080 = ", round(x$R0, 4), "<br><br>", pstr)
   })
 
   plot_ly(x = nms, y = R0s, type = "bar",
