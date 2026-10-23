@@ -202,6 +202,24 @@ observeEvent(input$btn_load_model, {
                                          paste(result$errors, collapse = " | "))))
     return()
   }
+  # Le DFE du fichier fait foi : toute ligne dont la valeur differe de la
+  # suggestion automatique est marquee non-automatique (dfe_auto = FALSE),
+  # sinon l'observer M09 la remplacerait par l'heuristique apres chargement.
+  if (!is.null(result$dfe_df) && nrow(result$dfe_df) > 0) {
+    auto_dfe <- tryCatch(build_dfe_table(result$comp_df, result$flux_df),
+                         error = function(e) NULL)
+    result$dfe_df$dfe_auto <- as.logical(result$dfe_df$dfe_auto)
+    if (!is.null(auto_dfe)) {
+      for (i in seq_len(nrow(result$dfe_df))) {
+        j <- which(auto_dfe$state_id == result$dfe_df$state_id[i])
+        same <- length(j) > 0 &&
+          identical(trimws(as.character(auto_dfe$dfe_expr[j[1]])),
+                    trimws(as.character(result$dfe_df$dfe_expr[i])))
+        if (!same) result$dfe_df$dfe_auto[i] <- FALSE
+      }
+    }
+  }
+
   # Activer le flag de chargement AVANT de modifier rv_comp/rv_flux
   # Cela bloque l'observer M09 qui recalculerait le DFE automatiquement
   rv_loading(TRUE)
@@ -249,6 +267,10 @@ observeEvent(input$btn_load_model, {
 
   # Second re-forcage : stocker le DFE correct pour le reappliquer
   # apres que tous les observers reactifs se soient executes
+  message("[M12 load] Stockage rv_pending_dfe:")
+  if (!is.null(result$dfe_df))
+    for (i in seq_len(nrow(result$dfe_df)))
+      message("  ", result$dfe_df$state_id[i], " = ", result$dfe_df$dfe_expr[i])
   rv_pending_dfe(result$dfe_df)
   rv_pending_params(result$params_df)
   rv_load_status(list(

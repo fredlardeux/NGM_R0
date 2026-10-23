@@ -12,6 +12,12 @@ Usage :
     python tests/test_r0_models.py                  # dossier ../modeles_json
     python tests/test_r0_models.py dossier1 dossier2
     pytest tests/test_r0_models.py
+    python tests/test_r0_models.py --reference      # valeurs a saisir dans l'app
+
+Le mode --reference affiche, pour chaque modele, des valeurs de parametres
+fixes et DISTINCTES et le R0 attendu (rayon spectral numerique independant).
+On saisit ces valeurs dans l'onglet "Evaluation Numerique" de l'app : le R0
+affiche doit etre identique. Cela teste toute la chaine (code R + moteur).
 
 Code de sortie non nul si au moins un modele echoue.
 
@@ -207,8 +213,46 @@ def test_models():
     assert not failed, "\n".join(f"{n}: {m}" for n, _, m in failed)
 
 
+def reference_values(names):
+    """Valeurs deterministes et distinctes (faciles a saisir a la main)."""
+    vals, k_rate, k_size = {}, 0, 0
+    for k in names:
+        if k.startswith("N"):
+            vals[k] = 1000.0 * (1 + k_size % 3)
+            k_size += 1
+        else:
+            vals[k] = round(0.10 + 0.05 * (k_rate % 15), 2)
+            k_rate += 1
+    return vals
+
+
+def print_reference(paths):
+    for p in paths:
+        data = json.load(open(p, encoding="utf-8"))
+        if "compartments" not in data or "fluxes" not in data:
+            continue
+        ctx = build_ctx(data)
+        if not ctx["infected_states"]:
+            continue
+        names = param_names(ctx)
+        vals = reference_values(names)
+        try:
+            r0 = spectral_radius(ctx, vals)
+            shown = f"{r0:.6f}"
+        except Exception as e:
+            shown = f"non calculable ({type(e).__name__})"
+        print(f"\n== {os.path.basename(p)}  (K {len(ctx['infected_states'])}x"
+              f"{len(ctx['infected_states'])})")
+        print("   " + ", ".join(f"{k} = {v:g}" for k, v in vals.items()))
+        print(f"   R0 attendu = {shown}")
+
+
 if __name__ == "__main__":
-    dirs = sys.argv[1:] or default_dirs()
+    args = [a for a in sys.argv[1:] if not a.startswith("--")]
+    if "--reference" in sys.argv:
+        print_reference(find_models(args or default_dirs()))
+        sys.exit(0)
+    dirs = args or default_dirs()
     paths = find_models(dirs)
     if not paths:
         print("Aucun fichier JSON trouve dans :", dirs)
