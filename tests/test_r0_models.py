@@ -193,6 +193,24 @@ def check_model(path, n_samples=6, seed=7):
     return "OK", f"K {n}x{n}, numerique, {n_num}/{n_num} jeux corrects"
 
 
+def check_engine_cases():
+    """Cas limites du moteur, independants des fichiers JSON."""
+    out = []
+    a, b, c, d, f = [sp.Symbol(x, positive=True) for x in "abcdf"]
+    K = sp.diag(a, b, c, d, f)          # 5x5, 5 blocs independants
+    r = ngm_engine.compute_R0_from_matrix(K, 5)
+    ok = r["method"] == "numeric" and r["R0_numeric"] is None
+    out.append(("OK" if ok else "ECHEC",
+                f"K 5x5 a blocs, symbolique : pas de R0 = 0 silencieux "
+                f"(methode={r['method']}, R0={r['R0_numeric']})"))
+    rn = ngm_engine.compute_R0_from_matrix(
+        K.subs({a: 1, b: 2, c: 3, d: 4, f: 5}), 5)
+    ok = rn["R0_numeric"] is not None and abs(rn["R0_numeric"] - 5.0) < 1e-9
+    out.append(("OK" if ok else "ECHEC",
+                f"K 5x5 a blocs, avec valeurs : R0 = {rn['R0_numeric']} (attendu 5)"))
+    return out
+
+
 def find_models(dirs):
     found = {}
     for d in dirs:
@@ -211,6 +229,12 @@ def test_models():
                for p in find_models(default_dirs())]
     failed = [r for r in results if r[1] == "ECHEC"]
     assert not failed, "\n".join(f"{n}: {m}" for n, _, m in failed)
+
+
+def test_engine_cases():
+    """Point d'entree pytest : cas limites du moteur."""
+    failed = [m for st, m in check_engine_cases() if st == "ECHEC"]
+    assert not failed, "\n".join(failed)
 
 
 def reference_values(names):
@@ -262,5 +286,8 @@ if __name__ == "__main__":
         status, msg = check_model(p)
         n_fail += status == "ECHEC"
         print(f"{status:6} {os.path.basename(p)}: {msg}")
+    for status, msg in check_engine_cases():
+        n_fail += status == "ECHEC"
+        print(f"{status:6} [moteur] {msg}")
     print(f"\n{len(paths)} fichiers, {n_fail} echec(s)")
     sys.exit(1 if n_fail else 0)
