@@ -36,9 +36,13 @@ import numpy as np
 import sympy as sp
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-for p in (os.path.join(HERE, "..", "backend"), os.path.join(HERE, "..")):
-    if p not in sys.path:
-        sys.path.insert(0, p)
+# backend/ doit passer AVANT la racine : un ancien ngm_engine.py a la racine
+# du depot ne doit jamais masquer celui de backend/.
+for p in (os.path.join(HERE, ".."), os.path.join(HERE, "..", "backend")):
+    p = os.path.abspath(p)
+    if p in sys.path:
+        sys.path.remove(p)
+    sys.path.insert(0, p)
 import ngm_engine  # noqa: E402
 
 # A garder synchronise avec M01_constants.R
@@ -202,7 +206,9 @@ def check_engine_cases():
     ok = r["method"] == "numeric" and r["R0_numeric"] is None
     out.append(("OK" if ok else "ECHEC",
                 f"K 5x5 a blocs, symbolique : pas de R0 = 0 silencieux "
-                f"(methode={r['method']}, R0={r['R0_numeric']})"))
+                f"(methode={r['method']}, R0={r['R0_numeric']})"
+                + ("" if ok else
+                   f" -> moteur charge : {os.path.abspath(ngm_engine.__file__)}")))
     rn = ngm_engine.compute_R0_from_matrix(
         K.subs({a: 1, b: 2, c: 3, d: 4, f: 5}), 5)
     ok = rn["R0_numeric"] is not None and abs(rn["R0_numeric"] - 5.0) < 1e-9
@@ -390,6 +396,9 @@ if __name__ == "__main__":
     if not paths:
         print("Aucun fichier JSON trouve dans :", dirs)
         sys.exit(2)
+    print("Moteur  :", os.path.abspath(ngm_engine.__file__))
+    print("Module  :", os.path.abspath(model_context.__file__))
+    print()
     n_fail = 0
     for p in paths:
         status, msg = check_model(p)
