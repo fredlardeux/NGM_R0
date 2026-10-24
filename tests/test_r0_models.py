@@ -211,6 +211,106 @@ def check_engine_cases():
     return out
 
 
+# ---------------------------------------------------------------------------
+# Controle du module backend/model_context.py (logique de modele en Python)
+# ---------------------------------------------------------------------------
+import model_context  # noqa: E402
+
+
+def _canon(name):
+    """01_SEIR_classique.json -> SEIR_classique.json"""
+    return re.sub(r"^\d+_", "", name)
+
+
+# Formules fermees DERIVEES A LA MAIN (independantes du moteur et du module).
+# Ebola : R0 = R_I + R_H + R_F avec
+#   R_I = bI/(d1+g1) ; R_H = bH g1/((d1+g1)(d2+g2)) ;
+#   R_F = (bF/gF) [ d1/(d1+g1) + g1 d2/((d1+g1)(d2+g2)) ]
+ORACLES = {
+    "SEIR_classique.json": lambda v: v["beta_c"] / v["gamma_r"],
+    "SEIRA_asymptomatiques.json": lambda v: v["beta_c"] * (
+        (1 - v["p_a"]) / v["gamma_r"] + v["p_a"] * v["rho_a"] / v["gamma_a"]),
+    "Ross_Macdonald_simple.json": lambda v: v["a"] * (
+        v["b"] * v["c"] * v["m"] / (v["gamma_h"] * v["mu_v"])) ** 0.5,
+    "Dengue_2_serotypes.json": lambda v: v["a_v"] * (
+        v["b_h"] * v["c_h"] * v["N_v"] / (v["N_h"] * v["gamma_h"] * v["mu_v"])) ** 0.5,
+    "Ebola_SEIHFR.json": lambda v: (
+        v["beta_I"] / (v["delta_1"] + v["gamma_1"])
+        + v["beta_H"] * v["gamma_1"] / ((v["delta_1"] + v["gamma_1"])
+                                        * (v["delta_2"] + v["gamma_2"]))
+        + v["beta_F"] / v["gamma_F"] * (
+            v["delta_1"] / (v["delta_1"] + v["gamma_1"])
+            + v["gamma_1"] * v["delta_2"] / ((v["delta_1"] + v["gamma_1"])
+                                             * (v["delta_2"] + v["gamma_2"])))),
+    # Metapopulation : valeur propre dominante de K = [[b1/g1, b12/g2],[b21/g1, b2/g2]]
+    "Metapopulation_2_patches.json": lambda v: (
+        (v["beta_1"] / v["gamma_1"] + v["beta_2"] / v["gamma_2"])
+        + (((v["beta_1"] / v["gamma_1"] - v["beta_2"] / v["gamma_2"]) ** 2)
+           + 4 * v["beta_12"] * v["beta_21"] / (v["gamma_1"] * v["gamma_2"])) ** 0.5) / 2,
+}
+
+
+def check_context_module(path, n_samples=4, seed=11):
+    """3 verifications du module sur un modele ; retourne [(statut, msg)]."""
+    data = json.load(open(path, encoding="utf-8"))
+    if "compartments" not in data or "fluxes" not in data:
+        return []
+    res = []
+    legacy = build_ctx(data)
+    new = model_context.build_context_from_model(data)["ctx"]
+    names = param_names(legacy)
+    rng = np.random.default_rng(seed)
+
+    # 1) meme R0 que la reconstruction independante du script
+    bad = 0
+    for _ in range(n_samples):
+        vals = sample_params(names, rng)
+        try:
+            a, b = spectral_radius(legacy, vals), spectral_radius(new, vals)
+            bad += abs(a - b) > TOL * max(1.0, a)
+        except Exception:
+            bad += 1
+    res.append(("OK" if not bad and new["infected_states"] == legacy["infected_states"]
+                else "ECHEC", "module = reconstruction independante"
+                + (f" ({bad}/{n_samples} jeux differents)" if bad else "")))
+
+    # 2) formule fermee derivee a la main (si disponible)
+    oracle = ORACLES.get(_canon(os.path.basename(path)))
+    if oracle is not None:
+        bad, skipped = 0, False
+        for _ in range(n_samples):
+            vals = sample_params(names, rng)
+            try:
+                ref = oracle(vals)
+            except KeyError:
+                skipped = True
+                break
+            try:
+                bad += abs(spectral_radius(new, vals) - ref) > TOL * max(1.0, ref)
+            except Exception:
+                bad += 1
+        res.append(("SKIP", "formule fermee : noms de parametres differents")
+                   if skipped else
+                   ("OK" if not bad else "ECHEC",
+                    "formule fermee derivee a la main"
+                    + (f" ({bad}/{n_samples} jeux faux)" if bad else "")))
+
+    # 3) pas de naissance => aucune suggestion Lambda_b / mu_d (bug du 24/10)
+    births = any(_txt_pt(f) == "birth" for f in data["fluxes"])
+    if not births:
+        sug = model_context.suggest_dfe(data["compartments"], data["fluxes"])
+        leak = [r["state_id"] for r in sug
+                if "Lambda_b" in r["dfe_expr"] or "mu_d" in r["dfe_expr"]]
+        res.append(("OK" if not leak else "ECHEC",
+                    "sans naissance : pas de Lambda_b/mu_d suggere"
+                    + (f" ({leak})" if leak else "")))
+    return res
+
+
+def _txt_pt(f):
+    return (f.get("process_type") or "").strip()
+
+
 def find_models(dirs):
     found = {}
     for d in dirs:
@@ -229,6 +329,15 @@ def test_models():
                for p in find_models(default_dirs())]
     failed = [r for r in results if r[1] == "ECHEC"]
     assert not failed, "\n".join(f"{n}: {m}" for n, _, m in failed)
+
+
+def test_context_module():
+    """Point d'entree pytest : module model_context."""
+    failed = []
+    for p in find_models(default_dirs()):
+        failed += [f"{os.path.basename(p)}: {m}"
+                   for st, m in check_context_module(p) if st == "ECHEC"]
+    assert not failed, "\n".join(failed)
 
 
 def test_engine_cases():
@@ -289,5 +398,10 @@ if __name__ == "__main__":
     for status, msg in check_engine_cases():
         n_fail += status == "ECHEC"
         print(f"{status:6} [moteur] {msg}")
+    print()
+    for p in paths:
+        for status, msg in check_context_module(p):
+            n_fail += status == "ECHEC"
+            print(f"{status:6} [module] {os.path.basename(p)}: {msg}")
     print(f"\n{len(paths)} fichiers, {n_fail} echec(s)")
     sys.exit(1 if n_fail else 0)
