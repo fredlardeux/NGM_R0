@@ -852,6 +852,13 @@ def _r0_block_decomposition(K, n):
     R0 = max(rho(K1), rho(K2), ...) si blocs independants.
     """
     try:
+        # K encore symbolique : les blocs ne sont pas evaluables numeriquement.
+        # Sans ce garde, chaque bloc retombait sur 0.0 et R0 valait 0
+        # silencieusement. On laisse _r0_numeric renvoyer son placeholder
+        # ("evaluer numeriquement"), comme pour une matrice 5x5 connectee.
+        if K.free_symbols:
+            return None
+
         # Matrice de connectivite (non orientee)
         connected = [[False] * n for _ in range(n)]
         for i in range(n):
