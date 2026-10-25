@@ -4,6 +4,8 @@ NGM R0 Calculator -- Backend FastAPI
 Endpoints :
   POST /compute_ngm          -- Calcul NGM symbolique (etapes 1-7)
   POST /evaluate_r0          -- Evaluation numerique de R0
+  POST /build_context        -- Contexte NGM + table F/V + suggestions DFE
+                                (logique de modele : model_context.py)
   POST /validate_dfe         -- Validation symbolique du DFE
   POST /sensitivity_local    -- Elasticites locales
   POST /sensitivity_lhs_prcc -- Sensibilite globale LHS + PRCC
@@ -34,6 +36,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
 
 import ngm_engine
+import model_context
 
 # ==============================================================================
 # APP FASTAPI
@@ -130,6 +133,20 @@ class LHSPRCCRequest(BaseModel):
     ngm_ctx          : Optional[Any] = None  # contexte NGM pour methode numerique
 
 
+class BuildContextRequest(BaseModel):
+    """Modele brut -> contexte NGM, table de classification, suggestions DFE."""
+    compartments        : list[dict]
+    fluxes              : list[dict]
+    dfe                 : Optional[list[dict]] = None   # sinon : suggestions
+    infected_order      : Optional[Any] = None          # list[str] ou str
+    overrides           : Optional[Any] = None          # {flux_id: {role, ...}}
+    param_vals          : Optional[Any] = None
+    include_entry_terms : bool = True
+
+    class Config:
+        extra = "allow"   # champs R supplementaires ignores
+
+
 class HarteminkR0Request(BaseModel):
     """Calcul R0 depuis matrice K saisie directement (Hartemink)."""
     K_entries  : list[list[str]]   # matrice NxN d'expressions symboliques
@@ -177,6 +194,12 @@ def health_check():
         "engine"        : "ngm_engine loaded",
         "engine_version": engine_version,
         "engine_file"   : ngm_engine.__file__,
+        "model_context_file": model_context.__file__,
+        "engine_features": {
+            "eigenvalue_pruning": hasattr(ngm_engine, "_prune_dominated_eigenvalues"),
+            "block_guard"       : "Sans ce garde" in inspect.getsource(
+                                      ngm_engine._r0_block_decomposition),
+        },
         "time"          : time.time()
     }
 
@@ -315,6 +338,40 @@ def sensitivity_lhs_prcc(req: LHSPRCCRequest):
         )
 
 
+@app.post("/build_context")
+def build_context_endpoint(req: BuildContextRequest):
+    """
+    Construit, a partir du modele brut (compartiments, flux, DFE) :
+      - ctx       : contexte pret pour /compute_ngm et /validate_dfe
+      - sym_table : classification des flux (is_F, is_V, is_entry, ...)
+      - dfe       : suggestions de DFE (valeur, auto, commentaire)
+      - warnings  : flux ignores, etc.
+    Les surcharges manuelles du tableau Symbolic/NGM arrivent dans `overrides`.
+    """
+    try:
+        order = req.infected_order
+        if isinstance(order, str):
+            order = [order]
+        if not isinstance(order, list):
+            order = None
+        out = model_context.build_context(
+            req.compartments, req.fluxes,
+            dfe                 = req.dfe or None,
+            infected_order      = order,
+            overrides           = req.overrides if isinstance(req.overrides, dict) else None,
+            param_vals          = req.param_vals if isinstance(req.param_vals, dict) else None,
+            include_entry_terms = req.include_entry_terms,
+        )
+        out["ok"] = True
+        return JSONResponse(content=json.loads(json.dumps(out, default=str)))
+    except Exception as e:
+        raise HTTPException(
+            status_code = 500,
+            detail      = {"ok": False, "error": str(e),
+                           "trace": traceback.format_exc()}
+        )
+
+
 @app.post("/hartemink/compute_r0")
 def hartemink_compute_r0(req: HarteminkR0Request):
     """
@@ -375,13 +432,16 @@ def hartemink_compute_r0(req: HarteminkR0Request):
         )
 
 
+class HarteminkSensRequest(BaseModel):
+    """Sensibilite globale depuis une matrice K (Hartemink)."""
+    K_entries    : list[list[str]]
+    type_names   : list[str]
+    param_bounds : Dict[str, list]
+    N            : int = Field(default=500, ge=50, le=5000)
+
+
 @app.post("/hartemink/sensitivity")
-def hartemink_sensitivity(
-    K_entries  : list,
-    type_names : list[str],
-    param_bounds: Dict[str, list],
-    N          : int = 500
-):
+def hartemink_sensitivity(req: HarteminkSensRequest):
     """
     Sensibilite globale sur les K_ij ou sur leurs parametres.
     Partage global_sensitivity_lhs_prcc() avec l'app compartimentale.
@@ -389,14 +449,14 @@ def hartemink_sensitivity(
     try:
         # D'abord construire R0_expr depuis K
         req_k = HarteminkR0Request(
-            K_entries  = K_entries,
-            type_names = type_names
+            K_entries  = req.K_entries,
+            type_names = req.type_names
         )
         r0_result = hartemink_compute_r0(req_k)
         R0_expr   = r0_result.get("R0_expr_str", "0")
 
         json_str = ngm_engine.global_sensitivity_lhs_prcc(
-            R0_expr, param_bounds, N)
+            R0_expr, req.param_bounds, req.N)
         return JSONResponse(content=json.loads(json_str))
 
     except Exception as e:

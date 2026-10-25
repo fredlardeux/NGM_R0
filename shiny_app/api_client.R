@@ -195,6 +195,68 @@ api_validate_dfe <- function(ctx, base_url) {
 }
 
 
+# =============================================================================
+# SECTION 2b -- Contexte du modele (logique de modele en Python)
+# =============================================================================
+# La classification des flux (F/V), la construction de fi/vi, les suggestions
+# de DFE et la detection de demographie sont calculees par backend/
+# model_context.py. R ne fait qu'envoyer le modele et recevoir le resultat.
+
+#' data.frame -> liste de lignes (chaque ligne = liste nommee de scalaires)
+.df_to_rows <- function(df) {
+  if (is.null(df) || nrow(df) == 0) return(list())
+  lapply(seq_len(nrow(df)), function(i) as.list(df[i, , drop = FALSE]))
+}
+
+#' liste de lignes (depuis JSON) -> data.frame
+.rows_to_df <- function(rows) {
+  if (length(rows) == 0) return(data.frame(stringsAsFactors = FALSE))
+  do.call(rbind, lapply(rows, function(r)
+    as.data.frame(lapply(r, function(v) if (is.null(v)) NA else v),
+                  stringsAsFactors = FALSE, check.names = FALSE)))
+}
+
+#' Construire le contexte NGM, la table F/V et les suggestions DFE
+#'
+#' @param comp_df        data.frame des compartiments
+#' @param flux_df        data.frame des flux
+#' @param base_url       character
+#' @param dfe_df         data.frame DFE (state_id, dfe_expr) ; sinon suggestions
+#' @param infected_order character -- ordre impose des compartiments infectes
+#' @param overrides      list nommee {flux_id: list(role = "F"|"V"|"none",
+#'                       dfe_status = "zero"|"positive", is_entry = TRUE|FALSE)}
+#' @param param_vals     list -- valeurs numeriques optionnelles
+#' @return list(ok, ctx, sym_table, dfe, warnings)
+api_build_context <- function(comp_df, flux_df, base_url, dfe_df = NULL,
+                              infected_order = NULL, overrides = NULL,
+                              param_vals = NULL) {
+  body <- list(compartments = .df_to_rows(comp_df),
+               fluxes       = .df_to_rows(flux_df))
+  if (!is.null(dfe_df) && nrow(dfe_df) > 0)
+    body$dfe <- .df_to_rows(dfe_df[, c("state_id", "dfe_expr"), drop = FALSE])
+  if (length(infected_order) > 0)
+    body$infected_order <- as.list(as.character(infected_order))
+  if (length(overrides) > 0)  body$overrides  <- overrides
+  if (length(param_vals) > 0) body$param_vals <- param_vals
+
+  res <- .api_post("/build_context", body, base_url, timeout = 60)
+  if (!scal_lgl(res$ok))
+    stop("build_context a echoue : ", scal_chr(res$error, "erreur inconnue"))
+
+  ctx <- res$ctx
+  ctx$infected_states <- as.character(unlist(ctx$infected_states))
+  ctx$all_states      <- as.character(unlist(ctx$all_states))
+  ctx$species         <- as.character(unlist(ctx$species))
+  ctx$has_demography  <- scal_lgl(ctx$has_demography)
+
+  list(ok        = TRUE,
+       ctx       = ctx,
+       sym_table = .rows_to_df(res$sym_table),
+       dfe       = .rows_to_df(res$dfe),
+       warnings  = as.character(unlist(res$warnings)))
+}
+
+
 #' Sensibilite locale (elasticites)
 #'
 #' Remplace : ngm_py$sensitivity_analysis(R0_expr_str, param_vals)
