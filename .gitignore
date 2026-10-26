@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 _pycache_/
 backend/__pycache__/ngm_engine.cpython-311.pyc
 .~lock.liste des adresses RAW de github pour les fichiers du projet pour claude_ai.odt\#
@@ -14,3 +15,17 @@ Procedure de lancement de NGM_R0.odt
 tests des modeles.odt
 TESTS DES R0 avec le programme NGM_R0.odt
 *.pyc
+=======
+# Python
+__pycache__/
+*.pyc
+
+# LibreOffice : fichiers de verrou et documents de travail
+.~lock.*
+*.odt
+
+# R
+.Rproj.user/
+.Rhistory
+.RData
+>>>>>>> Stashed changes
